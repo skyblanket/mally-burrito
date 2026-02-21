@@ -13,7 +13,7 @@ pub fn do_maint(args: [][:0]u8, install_dir: []const u8) !void {
     const stdout = &stdout_writer.interface;
 
     if (args.len < 1) {
-        logger.warn("No sub-command provided!", .{});
+        logger.warn("No sub-command provided.", .{});
     } else {
         if (std.mem.eql(u8, args[0], "uninstall")) {
             try do_uninstall(install_dir);
@@ -23,9 +23,7 @@ pub fn do_maint(args: [][:0]u8, install_dir: []const u8) !void {
             try print_install_dir(stdout, install_dir);
         }
 
-        if (std.mem.eql(u8, args[0], "meta")) {
-            try print_metadata(stdout);
-        }
+        // "meta" command removed — no metadata to leak
     }
 }
 
@@ -34,7 +32,7 @@ fn confirm() !bool {
     var stdin_reader = std.fs.File.stdin().reader(&stdin_buf);
     var stdin = &stdin_reader.interface;
 
-    logger.query("Please confirm this action [y/n]: ", .{});
+    logger.query("Confirm [y/n]: ", .{});
 
     if (stdin.takeDelimiterExclusive('\n')) |user_input| {
         if (std.mem.eql(u8, user_input[0..1], "y") or std.mem.eql(u8, user_input[0..1], "Y")) {
@@ -49,22 +47,15 @@ fn confirm() !bool {
 }
 
 fn do_uninstall(install_dir: []const u8) !void {
-    logger.warn("This will uninstall the application runtime for this Burrito binary!", .{});
+    logger.warn("This will uninstall the application runtime.", .{});
     if (try confirm() == false) {
-        logger.warn("Uninstall was aborted!", .{});
-        logger.info("Quitting.", .{});
+        logger.warn("Aborted.", .{});
         return;
     }
 
-    logger.info("Deleting directory: {s}", .{install_dir});
+    logger.info("Removing: {s}", .{install_dir});
     try std.fs.deleteTreeAbsolute(install_dir);
-    logger.info("Uninstall complete!", .{});
-    logger.info("Quitting.", .{});
-}
-
-fn print_metadata(out: *std.Io.Writer) !void {
-    try out.print("{s}", .{wrapper.RELEASE_METADATA_JSON});
-    try out.flush();
+    logger.info("Done.", .{});
 }
 
 fn print_install_dir(out: *std.Io.Writer, install_dir: []const u8) !void {
@@ -73,7 +64,7 @@ fn print_install_dir(out: *std.Io.Writer, install_dir: []const u8) !void {
 }
 
 pub fn do_clean_old_versions(install_prefix_path: []const u8, current_install_path: []const u8) !void {
-    std.log.debug("Going to clean up older versions of this application...", .{});
+    std.log.debug("Cleaning older versions...", .{});
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -89,20 +80,18 @@ pub fn do_clean_old_versions(install_prefix_path: []const u8, current_install_pa
             const possible_app_path = try std.fs.path.join(allocator, &[_][]const u8{ install_prefix_path, dir.name });
             const other_install = try install.load_install_from_path(allocator, possible_app_path);
 
-            // If can can't figure out if this is an install dir, just ignore it
             if (other_install == null) {
                 continue;
             }
 
-            // If this isn't the same installed app as us ignore it
-            if (!std.mem.eql(u8, current_install.?.metadata.app_name, other_install.?.metadata.app_name)) {
+            if (current_install == null) {
                 continue;
             }
 
-            // Compare the version, if it's older, delete the directory
+            // Compare versions — delete older ones
             if (std.SemanticVersion.order(current_install.?.version, other_install.?.version) == .gt) {
                 try std.fs.deleteTreeAbsolute(other_install.?.install_dir_path);
-                logger.log_stderr("Uninstalled older version (v{s})", .{other_install.?.metadata.app_version});
+                logger.log_stderr("Removed older version (v{s})", .{other_install.?.metadata.app_version});
             }
         }
     }

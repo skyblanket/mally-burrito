@@ -6,7 +6,7 @@ defmodule Burrito.Steps.Build.CopyRelease do
 
   @success_banner """
   \n\n
-  🌯 Burrito has wrapped your Elixir app! 🌯
+  Build complete!
   """
 
   @impl Step
@@ -30,7 +30,7 @@ defmodule Burrito.Steps.Build.CopyRelease do
       end
 
     bin_path = Path.join(context.self_dir, ["zig-out", "/bin", "/#{orig_bin_name}"])
-    bin_out_path = Path.join(app_path, ["burrito_out"])
+    bin_out_path = Path.join(app_path, ["burrito_out"])  # Keep output dir name for compat
     File.mkdir_p!(bin_out_path)
 
     output_bin_path = Path.join(bin_out_path, [bin_name])

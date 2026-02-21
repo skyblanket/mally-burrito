@@ -46,7 +46,7 @@ defmodule Burrito.Steps.Patch.RecompileNIFs do
     # We'll probably need to expand how we detect NIFs, but :elixir_make is a popular way to compile NIFs
     # so it's a good place to start...
 
-    paths = Mix.Project.deps_paths() |> Enum.filter(fn {name, _} -> name != :burrito end)
+    paths = Mix.Project.deps_paths() |> Enum.filter(fn {name, _} -> name not in [:burrito, :mally_burrito] end)
 
     Enum.map(paths, fn {dep_name, path} ->
       Mix.Project.in_project(dep_name, path, fn module ->

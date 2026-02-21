@@ -1,7 +1,7 @@
 defmodule Burrito.Util.FileCache do
   require Logger
 
-  @cache_namespace "burrito_file_cache"
+  @cache_namespace "mrt_cache"
 
   @spec fetch(binary()) :: {:hit, binary} | {:error, term()} | :miss
   def fetch(key) when is_binary(key) do
@@ -47,7 +47,7 @@ defmodule Burrito.Util.FileCache do
 
       {:error, err} ->
         Logger.error("Failed to access cache directory")
-        raise "Could not access the Burrito cache directory (#{err})"
+        raise "Could not access cache directory (#{err})"
     end
   end
 end

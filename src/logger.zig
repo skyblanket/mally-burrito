@@ -1,27 +1,27 @@
 const std = @import("std");
 
 pub fn query(comptime message: []const u8, args: anytype) void {
-    printToStdout("[?] " ++ message, args);
+    printToStdout("> " ++ message, args);
 }
 
 pub fn log_stderr(comptime message: []const u8, args: anytype) void {
-    printToStderr("[l] " ++ message ++ "\n", args);
+    printToStderr("- " ++ message ++ "\n", args);
 }
 
 pub fn info(comptime message: []const u8, args: anytype) void {
-    printToStdout("[i] " ++ message ++ "\n", args);
+    printToStdout("- " ++ message ++ "\n", args);
 }
 
 pub fn warn(comptime message: []const u8, args: anytype) void {
-    printToStderr("[w] " ++ message ++ "\n", args);
+    printToStderr("* " ++ message ++ "\n", args);
 }
 
 pub fn err(comptime message: []const u8, args: anytype) void {
-    printToStderr("[!] " ++ message ++ "\n", args);
+    printToStderr("! " ++ message ++ "\n", args);
 }
 
 pub fn crit(comptime message: []const u8, args: anytype) void {
-    printToStderr("[!!] " ++ message ++ "\n", args);
+    printToStderr("!! " ++ message ++ "\n", args);
 }
 
 fn printToStdout(comptime message: []const u8, args: anytype) void {

@@ -55,13 +55,13 @@ defmodule Burrito.Builder do
 
     # look for override target in system env
     # if it's a valid target, set it as the only target
-    target_override_string = System.get_env("BURRITO_TARGET")
+    target_override_string = System.get_env("MRT_TARGET")
 
     build_targets =
       if target_override_string do
         Log.warning(
           :build,
-          "Target is being overridden with BURRITO_TARGET #{target_override_string}"
+          "Target override: #{target_override_string}"
         )
 
         override_atom =
@@ -106,11 +106,11 @@ defmodule Burrito.Builder do
         halted: false
       }
 
-      Log.info(:build, "Burrito is building target: #{target.alias}")
+      Log.info(:build, "Building target: #{target.alias}")
 
       Log.info(
         :build,
-        "Burrito will build for target:\n\tOS: #{target.os}\n\tCPU: #{target.cpu}\n\tQualifiers: #{inspect(target.qualifiers)}\n\tDebug: #{target.debug?}"
+        "Target config:\n\tOS: #{target.os}\n\tCPU: #{target.cpu}\n\tQualifiers: #{inspect(target.qualifiers)}\n\tDebug: #{target.debug?}"
       )
 
       phases = [

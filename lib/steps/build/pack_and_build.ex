@@ -16,24 +16,20 @@ defmodule Burrito.Steps.Build.PackAndBuild do
 
     zig_build_args = ["-Dtarget=#{build_triplet}"]
 
-    create_metadata_file(context.self_dir, zig_build_args, context.mix_release)
+    create_metadata_file(context.self_dir, context.mix_release)
 
-    # TODO: Why do we need to do this???
-    # This is to bypass a VERY strange bug inside Linux containers...
-    # If we don't do this, the archiver will fail to see all the files inside the lib directory
-    # This is still under investigation, but touching a file inside the directory seems to force the
-    # File system to suddenly "wake up" to all the files inside it.
-    Path.join(context.work_dir, ["/lib", "/.burrito"]) |> File.touch!()
+    # Touch a file inside lib to work around a Linux container FS bug
+    Path.join(context.work_dir, ["/lib", "/.mrt"]) |> File.touch!()
 
     build_env =
       [
-        {"__BURRITO_IS_PROD", is_prod(context.target)},
-        {"__BURRITO_RELEASE_PATH", context.work_dir},
-        {"__BURRITO_RELEASE_NAME", release_name},
-        {"__BURRITO_PLUGIN_PATH", plugin_path}
+        {"__MRT_IS_PROD", is_prod(context.target)},
+        {"__MRT_RELEASE_PATH", context.work_dir},
+        {"__MRT_RELEASE_NAME", release_name},
+        {"__MRT_PLUGIN_PATH", plugin_path}
       ] ++ context.extra_build_env
 
-    Log.info(:step, "Zig build env: #{inspect(build_env)}")
+    Log.info(:step, "Build env: #{inspect(build_env)}")
 
     build_result =
       System.cmd("zig", ["build"] ++ zig_build_args,
@@ -51,11 +47,7 @@ defmodule Burrito.Steps.Build.PackAndBuild do
         context
 
       _ ->
-        Log.error(
-          :step,
-          "Burrito failed to wrap up your app! Check the logs for more information."
-        )
-
+        Log.error(:step, "Build failed! Check the logs for more information.")
         raise "Wrapper build failed"
     end
   end
@@ -66,23 +58,19 @@ defmodule Burrito.Steps.Build.PackAndBuild do
     Path.join(File.cwd!(), [plugin_path])
   end
 
-  defp create_metadata_file(self_path, args, release) do
-    Log.info(:step, "Generating wrapper metadata file...")
+  defp create_metadata_file(self_path, release) do
+    app_version = release.version
+    erts_version = release.erts_version |> to_string()
 
-    {zig_version_string, 0} = System.cmd("zig", ["version"], cd: self_path)
+    # Binary format: [u8 app_version_len][app_version][u8 erts_version_len][erts_version]
+    binary = <<
+      byte_size(app_version)::8,
+      app_version::binary,
+      byte_size(erts_version)::8,
+      erts_version::binary
+    >>
 
-    metadata_map = %{
-      app_name: Atom.to_string(release.name),
-      zig_version: zig_version_string |> String.trim(),
-      zig_build_arguments: args,
-      app_version: release.version,
-      options: inspect(release.options),
-      erts_version: release.erts_version |> to_string()
-    }
-
-    encoded = Jason.encode!(metadata_map)
-
-    Path.join(self_path, ["src/", "_metadata.json"]) |> File.write!(encoded)
+    Path.join(self_path, ["src/", "_metadata.bin"]) |> File.write!(binary)
   end
 
   defp is_prod(%Target{debug?: debug?}) do
@@ -94,14 +82,12 @@ defmodule Burrito.Steps.Build.PackAndBuild do
   end
 
   defp clean_build(self_path) do
-    Log.info(:step, "Cleaning up...")
-
     cache = Path.join(self_path, "zig-cache")
     out = Path.join(self_path, "zig-out")
     payload = Path.join(self_path, "payload.foilz")
     compressed_payload = Path.join(self_path, ["src/", "payload.foilz.xz"])
     musl_runtime = Path.join(self_path, ["src/", "musl-runtime.so"])
-    metadata = Path.join(self_path, ["src/", "_metadata.json"])
+    metadata = Path.join(self_path, ["src/", "_metadata.bin"])
 
     File.rmdir(cache)
     File.rmdir(out)

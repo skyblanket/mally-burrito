@@ -44,7 +44,7 @@ defmodule Burrito.Steps.Fetch.FetchMusl do
       context
       | extra_build_env:
           context.extra_build_env ++
-            [{"__BURRITO_MUSL_RUNTIME_PATH", "/tmp/libc-musl-#{get_runtime_hash(arch)}.so"}]
+            [{"__MRT_MUSL_RUNTIME_PATH", "/tmp/libc-musl-#{get_runtime_hash(arch)}.so"}]
     }
   end
 

@@ -45,6 +45,6 @@ defmodule Burrito.Util do
   """
   @spec running_standalone?() :: boolean()
   def running_standalone?() do
-    System.get_env("__BURRITO") != nil
+    System.get_env("__MRT") != nil
   end
 end
