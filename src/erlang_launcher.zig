@@ -12,10 +12,12 @@ const EnvMap = std.process.EnvMap;
 const MAX_READ_SIZE = 256;
 
 fn get_runtime_exe_name() []const u8 {
+    // These names are required by the Erlang runtime — erlexec hardcodes "beam.smp" internally.
+    // They're inside a hash-named cache directory so not trivially discoverable.
     if (builtin.os.tag == .windows) {
-        return "mrt.exe";
+        return "erl.exe";
     } else {
-        return "mrt-exec";
+        return "erlexec";
     }
 }
 
@@ -32,9 +34,7 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
     const rel_vsn_dir = try fs.path.join(allocator, &[_][]const u8{ install_dir, "releases", meta.app_version });
     const boot_path = try fs.path.join(allocator, &[_][]const u8{ rel_vsn_dir, "start" });
 
-    var erts_pfx = [_]u8{ 0xc2, 0xd5, 0xd3, 0xd4, 0x8a }; // "erts-" ^ 0xa7
-    for (&erts_pfx) |*b| b.* ^= 0xa7;
-    const erts_version_name = try std.fmt.allocPrint(allocator, "{s}{s}", .{ &erts_pfx, meta.erts_version });
+    const erts_version_name = try std.fmt.allocPrint(allocator, "erts-{s}", .{meta.erts_version});
     const erts_bin_path = try fs.path.join(allocator, &[_][]const u8{ install_dir, erts_version_name, "bin" });
     const erl_bin_path = try fs.path.join(allocator, &[_][]const u8{ erts_bin_path, get_runtime_exe_name() });
 

@@ -108,51 +108,13 @@ fn do_payload_install(arena: std.mem.Allocator, install_dir: []const u8, marker_
     // Unpack files
     try foilz.unpack_files(arena, PAYLOAD_DATA, install_dir, build_options.UNCOMPRESSED_SIZE);
 
-    // Rename runtime binaries after extraction to hide identity
-    try rename_runtime_binaries(arena, install_dir, meta);
+    // Note: we do NOT rename beam.smp/erlexec — erlexec has hardcoded references
+    // to beam.smp internally. The hash-based install directory already obscures the path.
 
     // Write marker file with binary metadata (for version cleanup)
     const file = try fs.createFileAbsolute(marker_path, .{ .truncate = true });
     try file.writeAll(RELEASE_METADATA);
     file.close();
-}
-
-fn rename_runtime_binaries(arena: std.mem.Allocator, install_dir: []const u8, meta: *const MetaStruct) !void {
-    // Obfuscated path prefix and filenames (XOR 0xa7, precomputed as integer literals)
-    var erts_prefix = [_]u8{ 0xc2, 0xd5, 0xd3, 0xd4, 0x8a }; // erts-
-    xor_decode(&erts_prefix);
-    const erts_dir = try std.fmt.allocPrint(arena, "{s}{s}", .{ &erts_prefix, meta.erts_version });
-    const erts_bin = try fs.path.join(arena, &.{ install_dir, erts_dir, "bin" });
-
-    if (IS_WINDOWS) {
-        var old_name = [_]u8{ 0xc2, 0xd5, 0xcb, 0x89, 0xc2, 0xdf, 0xc2 }; // erl.exe
-        xor_decode(&old_name);
-        const old_path = try fs.path.join(arena, &.{ erts_bin, &old_name });
-        const new_path = try fs.path.join(arena, &.{ erts_bin, "mrt.exe" });
-        std.fs.renameAbsolute(old_path, new_path) catch |e| {
-            log.debug("rename: {}", .{e});
-        };
-    } else {
-        var old_beam = [_]u8{ 0xc5, 0xc2, 0xc6, 0xca, 0x89, 0xd4, 0xca, 0xd7 }; // beam.smp
-        xor_decode(&old_beam);
-        const old_beam_path = try fs.path.join(arena, &.{ erts_bin, &old_beam });
-        const new_beam_path = try fs.path.join(arena, &.{ erts_bin, "mrt" });
-        std.fs.renameAbsolute(old_beam_path, new_beam_path) catch |e| {
-            log.debug("rename: {}", .{e});
-        };
-
-        var old_exec = [_]u8{ 0xc2, 0xd5, 0xcb, 0xc2, 0xdf, 0xc2, 0xc4 }; // erlexec
-        xor_decode(&old_exec);
-        const old_exec_path = try fs.path.join(arena, &.{ erts_bin, &old_exec });
-        const new_exec_path = try fs.path.join(arena, &.{ erts_bin, "mrt-exec" });
-        std.fs.renameAbsolute(old_exec_path, new_exec_path) catch |e| {
-            log.debug("rename: {}", .{e});
-        };
-    }
-}
-
-fn xor_decode(buf: []u8) void {
-    for (buf) |*b| b.* ^= 0xa7;
 }
 
 fn get_base_install_dir(arena: std.mem.Allocator) ![]const u8 {
