@@ -1,0 +1,11 @@
+.zig-cache/
+zig-out/
+zig-cache/
+payload.foilz
+src/payload.foilz.xz
+src/_metadata.json
+src/musl-runtime.so
+_build/
+deps/
+.hex
+.formatter.exs
