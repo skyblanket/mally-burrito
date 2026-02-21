@@ -11,15 +11,7 @@ const EnvMap = std.process.EnvMap;
 
 const MAX_READ_SIZE = 256;
 
-fn get_runtime_exe_name() []const u8 {
-    // These names are required by the Erlang runtime — erlexec hardcodes "beam.smp" internally.
-    // They're inside a hash-named cache directory so not trivially discoverable.
-    if (builtin.os.tag == .windows) {
-        return "erl.exe";
-    } else {
-        return "erlexec";
-    }
-}
+const MAX_RT_NAME = 7;
 
 pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct, self_path: []const u8, args_trimmed: []const []const u8) !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -42,7 +34,18 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
     for (&erts_pfx) |*b| b.* ^= K;
     const erts_version_name = try std.fmt.allocPrint(allocator, "{s}{s}", .{ &erts_pfx, meta.erts_version });
     const erts_bin_path = try fs.path.join(allocator, &[_][]const u8{ install_dir, erts_version_name, "bin" });
-    const erl_bin_path = try fs.path.join(allocator, &[_][]const u8{ erts_bin_path, get_runtime_exe_name() });
+
+    // Runtime exe name — XOR'd to avoid literal strings in binary
+    var rt_name: [MAX_RT_NAME]u8 = undefined;
+    if (builtin.os.tag == .windows) {
+        // "erl.exe" ^ 0xa7
+        rt_name = [_]u8{ 0xc2, 0xd5, 0xcb, 0x89, 0xc2, 0xdf, 0xc2 };
+    } else {
+        // "erlexec" ^ 0xa7
+        rt_name = [_]u8{ 0xc2, 0xd5, 0xcb, 0xc2, 0xdf, 0xc2, 0xc4 };
+    }
+    for (&rt_name) |*b| b.* ^= K;
+    const erl_bin_path = try fs.path.join(allocator, &[_][]const u8{ erts_bin_path, &rt_name });
 
     // Read the cookie file
     const release_cookie_file = try fs.openFileAbsolute(release_cookie_path, .{ .mode = .read_write });
