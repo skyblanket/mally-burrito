@@ -118,31 +118,41 @@ fn do_payload_install(arena: std.mem.Allocator, install_dir: []const u8, marker_
 }
 
 fn rename_runtime_binaries(arena: std.mem.Allocator, install_dir: []const u8, meta: *const MetaStruct) !void {
-    const erts_dir_name = try std.fmt.allocPrint(arena, "erts-{s}", .{meta.erts_version});
-    const erts_bin = try fs.path.join(arena, &.{ install_dir, erts_dir_name, "bin" });
+    // Obfuscated path prefix and filenames (XOR 0xa7, precomputed as integer literals)
+    var erts_prefix = [_]u8{ 0xc2, 0xd5, 0xd3, 0xd4, 0x8a }; // erts-
+    xor_decode(&erts_prefix);
+    const erts_dir = try std.fmt.allocPrint(arena, "{s}{s}", .{ &erts_prefix, meta.erts_version });
+    const erts_bin = try fs.path.join(arena, &.{ install_dir, erts_dir, "bin" });
 
     if (IS_WINDOWS) {
-        // Rename erl.exe → mrt.exe
-        const old_erl = try fs.path.join(arena, &.{ erts_bin, "erl.exe" });
-        const new_erl = try fs.path.join(arena, &.{ erts_bin, "mrt.exe" });
-        std.fs.renameAbsolute(old_erl, new_erl) catch |e| {
+        var old_name = [_]u8{ 0xc2, 0xd5, 0xcb, 0x89, 0xc2, 0xdf, 0xc2 }; // erl.exe
+        xor_decode(&old_name);
+        const old_path = try fs.path.join(arena, &.{ erts_bin, &old_name });
+        const new_path = try fs.path.join(arena, &.{ erts_bin, "mrt.exe" });
+        std.fs.renameAbsolute(old_path, new_path) catch |e| {
             log.debug("rename: {}", .{e});
         };
     } else {
-        // Rename beam.smp → mrt
-        const old_beam = try fs.path.join(arena, &.{ erts_bin, "beam.smp" });
-        const new_beam = try fs.path.join(arena, &.{ erts_bin, "mrt" });
-        std.fs.renameAbsolute(old_beam, new_beam) catch |e| {
+        var old_beam = [_]u8{ 0xc5, 0xc2, 0xc6, 0xca, 0x89, 0xd4, 0xca, 0xd7 }; // beam.smp
+        xor_decode(&old_beam);
+        const old_beam_path = try fs.path.join(arena, &.{ erts_bin, &old_beam });
+        const new_beam_path = try fs.path.join(arena, &.{ erts_bin, "mrt" });
+        std.fs.renameAbsolute(old_beam_path, new_beam_path) catch |e| {
             log.debug("rename: {}", .{e});
         };
 
-        // Rename erlexec → mrt-exec
-        const old_exec = try fs.path.join(arena, &.{ erts_bin, "erlexec" });
-        const new_exec = try fs.path.join(arena, &.{ erts_bin, "mrt-exec" });
-        std.fs.renameAbsolute(old_exec, new_exec) catch |e| {
+        var old_exec = [_]u8{ 0xc2, 0xd5, 0xcb, 0xc2, 0xdf, 0xc2, 0xc4 }; // erlexec
+        xor_decode(&old_exec);
+        const old_exec_path = try fs.path.join(arena, &.{ erts_bin, &old_exec });
+        const new_exec_path = try fs.path.join(arena, &.{ erts_bin, "mrt-exec" });
+        std.fs.renameAbsolute(old_exec_path, new_exec_path) catch |e| {
             log.debug("rename: {}", .{e});
         };
     }
+}
+
+fn xor_decode(buf: []u8) void {
+    for (buf) |*b| b.* ^= 0xa7;
 }
 
 fn get_base_install_dir(arena: std.mem.Allocator) ![]const u8 {
