@@ -63,19 +63,54 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
         try hidden_args_file.setPermissions(.{ .inner = perms });
     }
 
-    // Write hidden args: cookie, boot module, port mapper disable
-    // Boot module name XOR'd to prevent literal string in binary
-    // 0x90,0x99,0x9c,0x8d,0x9c,0x87 = "elixir" XOR 0xf5
-    var boot_mod: [6]u8 = .{ 0x90, 0x99, 0x9c, 0x8d, 0x9c, 0x87 };
-    for (&boot_mod) |*b| b.* ^= 0xf5;
+    // Write hidden args file — all identifying strings XOR'd
+    const K: u8 = 0xa7;
     var hidden_buf: [1024]u8 = undefined;
     var hidden_writer = hidden_args_file.writer(&hidden_buf);
     const hw = &hidden_writer.interface;
-    try hw.print("-setcookie {s}\n", .{release_cookie_content});
-    try hw.print("-{s} ansi_enabled true\n", .{&boot_mod});
-    try hw.print("-s {s} start_cli\n", .{&boot_mod});
-    try hw.writeAll("-start_epmd false\n");
-    try hw.writeAll("-erl_epmd_port 0\n");
+
+    // All identifying strings XOR'd with 0xa7 (computed via python3)
+    // "-setcookie "
+    var sc = [_]u8{ 0x8a, 0xd4, 0xc2, 0xd3, 0xc4, 0xc8, 0xc8, 0xcc, 0xce, 0xc2, 0x87 };
+    for (&sc) |*b| b.* ^= K;
+    try hw.writeAll(&sc);
+    try hw.writeAll(release_cookie_content);
+    try hw.writeAll("\n");
+
+    // "elixir" XOR 0xf5
+    var boot_mod: [6]u8 = .{ 0x90, 0x99, 0x9c, 0x8d, 0x9c, 0x87 };
+    for (&boot_mod) |*b| b.* ^= 0xf5;
+
+    // "-{boot_mod} ansi_enabled true\n"
+    try hw.writeAll("-");
+    try hw.writeAll(&boot_mod);
+    // " ansi_enabled true"
+    var ae = [_]u8{ 0x87, 0xc6, 0xc9, 0xd4, 0xce, 0xf8, 0xc2, 0xc9, 0xc6, 0xc5, 0xcb, 0xc2, 0xc3, 0x87, 0xd3, 0xd5, 0xd2, 0xc2 };
+    for (&ae) |*b| b.* ^= K;
+    try hw.writeAll(&ae);
+    try hw.writeAll("\n");
+
+    // "-s {boot_mod} start_cli\n"
+    try hw.writeAll("-s ");
+    try hw.writeAll(&boot_mod);
+    // " start_cli"
+    var scli = [_]u8{ 0x87, 0xd4, 0xd3, 0xc6, 0xd5, 0xd3, 0xf8, 0xc4, 0xcb, 0xce };
+    for (&scli) |*b| b.* ^= K;
+    try hw.writeAll(&scli);
+    try hw.writeAll("\n");
+
+    // "-start_epmd false\n"
+    var ep = [_]u8{ 0x8a, 0xd4, 0xd3, 0xc6, 0xd5, 0xd3, 0xf8, 0xc2, 0xd7, 0xca, 0xc3, 0x87, 0xc1, 0xc6, 0xcb, 0xd4, 0xc2 };
+    for (&ep) |*b| b.* ^= K;
+    try hw.writeAll(&ep);
+    try hw.writeAll("\n");
+
+    // "-erl_epmd_port 0\n"
+    var epp = [_]u8{ 0x8a, 0xc2, 0xd5, 0xcb, 0xf8, 0xc2, 0xd7, 0xca, 0xc3, 0xf8, 0xd7, 0xc8, 0xd5, 0xd3, 0x87, 0x97 };
+    for (&epp) |*b| b.* ^= K;
+    try hw.writeAll(&epp);
+    try hw.writeAll("\n");
+
     try hw.flush();
     hidden_args_file.close();
 
