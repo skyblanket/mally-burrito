@@ -82,7 +82,7 @@ pub fn main() !void {
             try std.fs.cwd().makePath(install_dir);
         }
 
-        try do_payload_install(arena, install_dir, marker_path, &meta);
+        try do_payload_install(arena, install_dir, marker_path);
     } else {
         log.debug("Already installed, skipping extraction.", .{});
     }
@@ -104,7 +104,7 @@ pub fn main() !void {
     try launcher.launch(install_dir, &env_map, &meta, self_path, args_trimmed);
 }
 
-fn do_payload_install(arena: std.mem.Allocator, install_dir: []const u8, marker_path: []const u8, meta: *const MetaStruct) !void {
+fn do_payload_install(arena: std.mem.Allocator, install_dir: []const u8, marker_path: []const u8) !void {
     // Unpack files
     try foilz.unpack_files(arena, PAYLOAD_DATA, install_dir, build_options.UNCOMPRESSED_SIZE);
 
