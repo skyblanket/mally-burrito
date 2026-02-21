@@ -25,6 +25,9 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
 
+    // XOR key for obfuscating string literals
+    const K: u8 = 0xa7;
+
     // Compute directories
     const release_cookie_path = try fs.path.join(allocator, &[_][]const u8{ install_dir, "releases", "COOKIE" });
     const release_lib_path = try fs.path.join(allocator, &[_][]const u8{ install_dir, "lib" });
@@ -34,7 +37,10 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
     const rel_vsn_dir = try fs.path.join(allocator, &[_][]const u8{ install_dir, "releases", meta.app_version });
     const boot_path = try fs.path.join(allocator, &[_][]const u8{ rel_vsn_dir, "start" });
 
-    const erts_version_name = try std.fmt.allocPrint(allocator, "erts-{s}", .{meta.erts_version});
+    // "erts-" XOR 0xa7
+    var erts_pfx = [_]u8{ 0xc2, 0xd5, 0xd3, 0xd4, 0x8a };
+    for (&erts_pfx) |*b| b.* ^= K;
+    const erts_version_name = try std.fmt.allocPrint(allocator, "{s}{s}", .{ &erts_pfx, meta.erts_version });
     const erts_bin_path = try fs.path.join(allocator, &[_][]const u8{ install_dir, erts_version_name, "bin" });
     const erl_bin_path = try fs.path.join(allocator, &[_][]const u8{ erts_bin_path, get_runtime_exe_name() });
 
@@ -64,7 +70,6 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
     }
 
     // Write hidden args file — all identifying strings XOR'd
-    const K: u8 = 0xa7;
     var hidden_buf: [1024]u8 = undefined;
     var hidden_writer = hidden_args_file.writer(&hidden_buf);
     const hw = &hidden_writer.interface;
