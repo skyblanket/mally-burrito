@@ -139,6 +139,7 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
         "-config",
         config_sys_path,
         "-extra",
+        "--no-halt",
     };
 
     if (builtin.os.tag == .windows) {
