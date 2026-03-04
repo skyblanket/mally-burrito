@@ -56,6 +56,24 @@ pub fn main() !void {
         return;
     }
 
+    // Check for CLI subcommands — prefix with "__cli__" so Elixir's start_cli
+    // doesn't interpret them as script filenames. Startup.ex strips the prefix.
+    const cli_commands = [_][]const u8{
+        "uninstall", "login", "logout", "whoami", "sessions",
+        "chat", "swarm", "tools", "status", "update", "update!",
+        "stop", "kill", "server",
+    };
+    var has_cli_cmd = false;
+    for (args_trimmed) |arg| {
+        for (&cli_commands) |cmd| {
+            if (std.mem.eql(u8, arg, cmd)) {
+                has_cli_cmd = true;
+                break;
+            }
+        }
+        if (has_cli_cmd) break;
+    }
+
     log.debug("Payload size: {}", .{PAYLOAD_DATA.len});
     log.debug("Dir: {s}", .{install_dir});
 
@@ -97,6 +115,12 @@ pub fn main() !void {
         try env_map.put("_IS_TTY", "1");
     } else {
         try env_map.put("_IS_TTY", "0");
+    }
+
+    // Tell launcher to skip -s elixir start_cli when running CLI subcommands
+    // (start_cli tries to interpret args as script filenames, causing "No file named" errors)
+    if (has_cli_cmd) {
+        try env_map.put("__MALLY_CLI", "1");
     }
 
     log.debug("Launching runtime...", .{});

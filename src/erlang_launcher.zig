@@ -98,14 +98,18 @@ pub fn launch(install_dir: []const u8, env_map: *EnvMap, meta: *const MetaStruct
     try hw.writeAll(&ae);
     try hw.writeAll("\n");
 
-    // "-s {boot_mod} start_cli\n"
-    try hw.writeAll("-s ");
-    try hw.writeAll(&boot_mod);
-    // " start_cli"
-    var scli = [_]u8{ 0x87, 0xd4, 0xd3, 0xc6, 0xd5, 0xd3, 0xf8, 0xc4, 0xcb, 0xce };
-    for (&scli) |*b| b.* ^= K;
-    try hw.writeAll(&scli);
-    try hw.writeAll("\n");
+    // "-s {boot_mod} start_cli\n" — skip in CLI mode to prevent
+    // start_cli from interpreting args as script filenames
+    const skip_start_cli = env_map.get("__MALLY_CLI") != null;
+    if (!skip_start_cli) {
+        try hw.writeAll("-s ");
+        try hw.writeAll(&boot_mod);
+        // " start_cli"
+        var scli = [_]u8{ 0x87, 0xd4, 0xd3, 0xc6, 0xd5, 0xd3, 0xf8, 0xc4, 0xcb, 0xce };
+        for (&scli) |*b| b.* ^= K;
+        try hw.writeAll(&scli);
+        try hw.writeAll("\n");
+    }
 
     // "-start_epmd false\n"
     var ep = [_]u8{ 0x8a, 0xd4, 0xd3, 0xc6, 0xd5, 0xd3, 0xf8, 0xc2, 0xd7, 0xca, 0xc3, 0x87, 0xc1, 0xc6, 0xcb, 0xd4, 0xc2 };
