@@ -4,10 +4,6 @@ const builtin = @import("builtin");
 
 const log = std.log;
 
-const CrossTarget = std.zig.CrossTarget;
-const Mode = std.builtin.Mode;
-const LibExeObjStep = std.build.LibExeObjStep;
-
 pub fn build(b: *std.Build) !void {
     log.info("Building release...", .{});
 
