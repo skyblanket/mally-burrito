@@ -13,7 +13,7 @@ defmodule Burrito.Steps.Fetch.Init do
 
     Log.info(:step, "Working directory: #{work_dir}")
 
-    new_context = %Context{context | work_dir: work_dir}
+    new_context = %{context | work_dir: work_dir}
     clean_work_dir(new_context)
   end
 

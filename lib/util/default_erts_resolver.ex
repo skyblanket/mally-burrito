@@ -12,7 +12,7 @@ defmodule Burrito.Util.DefaultERTSResolver do
   @impl ERTSResolver
   @spec do_resolve(Burrito.Builder.Target.t()) :: Burrito.Builder.Target.t()
   def do_resolve(%Target{erts_source: {:runtime, _}} = target) do
-    %Target{target | erts_source: {:runtime, version: Util.get_otp_version()}}
+    %{target | erts_source: {:runtime, version: Util.get_otp_version()}}
   end
 
   def do_resolve(%Target{erts_source: {:precompiled, version: otp_version}} = target)
@@ -24,7 +24,7 @@ defmodule Burrito.Util.DefaultERTSResolver do
            otp_version
          ) do
       %URI{} = location ->
-        %Target{target | erts_source: {:url, url: location}} |> do_resolve()
+        %{target | erts_source: {:url, url: location}} |> do_resolve()
     end
   end
 
@@ -32,7 +32,7 @@ defmodule Burrito.Util.DefaultERTSResolver do
     archive_data = File.read!(location)
     unpacked_location = do_unpack(archive_data, target)
 
-    %Target{target | erts_source: {:local_unpacked, path: unpacked_location}}
+    %{target | erts_source: {:local_unpacked, path: unpacked_location}}
   end
 
   def do_resolve(%Target{erts_source: {:url, url: location}} = target) do
@@ -40,7 +40,7 @@ defmodule Burrito.Util.DefaultERTSResolver do
     archive_data = get_erts(url_string)
     unpacked_location = do_unpack(archive_data, target)
 
-    %Target{target | erts_source: {:local_unpacked, path: unpacked_location}}
+    %{target | erts_source: {:local_unpacked, path: unpacked_location}}
   end
 
   def do_resolve(%Target{erts_source: {:local_unpacked, path: _location}} = target) do

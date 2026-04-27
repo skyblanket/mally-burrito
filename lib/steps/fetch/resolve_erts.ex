@@ -24,7 +24,7 @@ defmodule Burrito.Steps.Fetch.ResolveERTS do
         "We currently do not provide a pre-compiled ERTS release for your target's requested architecture and OS!"
       )
 
-      %Context{context | halted: true}
+      %{context | halted: true}
     else
       Log.info(:step, "Resolving ERTS: #{inspect(context.target.erts_source)}")
       resolved_erts_target = ERTSResolver.resolve(context.target)
@@ -32,10 +32,10 @@ defmodule Burrito.Steps.Fetch.ResolveERTS do
       case resolved_erts_target.erts_source do
         {:unresolved, _} ->
           Log.error(:step, "Cannot resolve ERTS, please check for errors in the log above.")
-          %Context{context | halted: true}
+          %{context | halted: true}
 
         _ ->
-          %Context{context | target: resolved_erts_target}
+          %{context | target: resolved_erts_target}
       end
     end
   end
