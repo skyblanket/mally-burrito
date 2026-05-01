@@ -174,11 +174,7 @@ fn create_dirs(dest_path: []const u8, sub_dir_names: []const u8, allocator: Allo
 }
 
 fn direct_log(comptime message: []const u8, args: anytype) void {
-    var buffer: [64]u8 = undefined;
-    const stderr = std.debug.lockStderrWriter(&buffer);
-    defer std.debug.unlockStderrWriter();
-    nosuspend {
-        stderr.print(message, args) catch return;
-        stderr.flush() catch return;
-    }
+    // Zig 0.14: std.debug.print writes to stderr directly. The 0.15+
+    // lockStderrWriter / unlockStderrWriter pair doesn't exist yet.
+    nosuspend std.debug.print(message, args);
 }
