@@ -90,11 +90,10 @@ defmodule Burrito.Builder.Target do
         "#{triplet}-musl"
 
       target.os == :darwin ->
-        # Pin to macOS 14 (Sonoma) so Zig uses its bundled libc stubs and the
-        # SDK detection path stays away from macOS 26 (Tahoe), which has a
-        # libsystem layout Zig 0.14-0.16 doesn't link cleanly. Output binary
-        # still runs on Tahoe; we just compile against the older SDK.
-        "#{triplet}.14"
+        # Pin to macOS 14.0 (Sonoma) so Zig uses its bundled libc stubs and
+        # avoids macOS 26 (Tahoe) host libsystem detection. Zig requires the
+        # full triplet form major.minor.patch.
+        "#{triplet}.14.0"
 
       true ->
         triplet
