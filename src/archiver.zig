@@ -18,12 +18,13 @@ const MAGIC = "\x9a\x3d\xf1\x7b\xe2";
 const MAX_READ_SIZE = 1000000000;
 
 pub fn pack_directory(arena: Allocator, path: []const u8, archive_path: []const u8) anyerror!void {
+    // Zig 0.14-compatible: file.writer() takes no args and returns a Writer directly.
+    // 0.15 introduced the buffer-arg form; we revert here so we can use Zig 0.14
+    // which doesn't trip the macOS Tahoe libc detection bug in 0.15+/0.16.
     const arch_file = try fs.cwd().createFile(archive_path, .{ .truncate = true });
     defer arch_file.close();
 
-    var foilz_write_buf: [1024]u8 = undefined;
-    var foilz_writer = arch_file.writer(&foilz_write_buf);
-    const writer = &foilz_writer.interface;
+    const writer = arch_file.writer();
 
     var dir = try fs.openDirAbsolute(path, .{ .access_sub_paths = true, .iterate = true });
     defer dir.close();
@@ -47,10 +48,7 @@ pub fn pack_directory(arena: Allocator, path: []const u8, archive_path: []const 
             const file = try entry.dir.openFile(entry.basename, .{});
             defer file.close();
 
-            var read_buf: [1024]u8 = undefined;
-            var file_reader = file.reader(&read_buf);
-            const reader = &file_reader.interface;
-
+            const reader = file.reader();
             const stat = try file.stat();
 
             const name = index;
@@ -58,7 +56,17 @@ pub fn pack_directory(arena: Allocator, path: []const u8, archive_path: []const 
             try writer.writeAll(name);
             try writer.writeInt(u64, stat.size, .little);
             if (stat.size > 0) {
-                assert(stat.size == try reader.streamRemaining(writer));
+                // Stream file contents into the archive in 8KB chunks.
+                var copy_buf: [8192]u8 = undefined;
+                var remaining = stat.size;
+                while (remaining > 0) {
+                    const want: usize = @min(copy_buf.len, @as(usize, @intCast(remaining)));
+                    const n = try reader.read(copy_buf[0..want]);
+                    if (n == 0) break;
+                    try writer.writeAll(copy_buf[0..n]);
+                    remaining -= n;
+                }
+                assert(remaining == 0);
             }
             try writer.writeInt(usize, stat.mode, .little);
 
@@ -70,7 +78,6 @@ pub fn pack_directory(arena: Allocator, path: []const u8, archive_path: []const 
     direct_log("\n", .{});
 
     try writer.writeAll(MAGIC);
-    try writer.flush();
 
     log.debug("Packed {} files.", .{count});
 }

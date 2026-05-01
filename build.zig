@@ -4,13 +4,12 @@ const builtin = @import("builtin");
 
 const log = std.log;
 
-// Helpers — Zig 0.16 removed std.process.getEnvVarOwned; build scripts now
-// read env via b.graph.environ_map. Wrap so the rest of build.zig stays clean.
+// Zig 0.14-compatible env helpers (allocator-based getEnvVarOwned).
 fn envOpt(b: *std.Build, key: []const u8) ?[]const u8 {
-    return b.graph.environ_map.get(key);
+    return std.process.getEnvVarOwned(b.allocator, key) catch null;
 }
 fn envReq(b: *std.Build, key: []const u8) ![]const u8 {
-    return envOpt(b, key) orelse return error.MissingEnvVar;
+    return std.process.getEnvVarOwned(b.allocator, key);
 }
 
 pub fn build(b: *std.Build) !void {
