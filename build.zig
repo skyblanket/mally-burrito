@@ -4,6 +4,15 @@ const builtin = @import("builtin");
 
 const log = std.log;
 
+// Helpers — Zig 0.16 removed std.process.getEnvVarOwned; build scripts now
+// read env via b.graph.environ_map. Wrap so the rest of build.zig stays clean.
+fn envOpt(b: *std.Build, key: []const u8) ?[]const u8 {
+    return b.graph.environ_map.get(key);
+}
+fn envReq(b: *std.Build, key: []const u8) ![]const u8 {
+    return envOpt(b, key) orelse return error.MissingEnvVar;
+}
+
 pub fn build(b: *std.Build) !void {
     log.info("Building release...", .{});
 
@@ -16,7 +25,7 @@ pub fn build(b: *std.Build) !void {
 pub fn run_archiver(b: *std.Build) !void {
     log.info("Compressing payload...", .{});
 
-    const release_path = try std.process.getEnvVarOwned(b.allocator, "__MRT_RELEASE_PATH");
+    const release_path = try envReq(b, "__MRT_RELEASE_PATH");
     try foilz.pack_directory(b.allocator, release_path, "./payload.foilz");
 
     if (builtin.os.tag == .windows) {
@@ -37,10 +46,10 @@ pub fn run_archiver(b: *std.Build) !void {
 pub fn build_wrapper(b: *std.Build) !void {
     log.info("Embedding payload...", .{});
 
-    const release_name = try std.process.getEnvVarOwned(b.allocator, "__MRT_RELEASE_NAME");
-    const plugin_path = std.process.getEnvVarOwned(b.allocator, "__MRT_PLUGIN_PATH") catch null;
-    const is_prod = std.process.getEnvVarOwned(b.allocator, "__MRT_IS_PROD") catch "1";
-    const musl_runtime_path = std.process.getEnvVarOwned(b.allocator, "__MRT_MUSL_RUNTIME_PATH") catch "";
+    const release_name = try envReq(b, "__MRT_RELEASE_NAME");
+    const plugin_path = envOpt(b, "__MRT_PLUGIN_PATH");
+    const is_prod = envOpt(b, "__MRT_IS_PROD") orelse "1";
+    const musl_runtime_path = envOpt(b, "__MRT_MUSL_RUNTIME_PATH") orelse "";
     var opt_level = std.builtin.OptimizeMode.Debug;
 
     if (std.mem.eql(u8, is_prod, "1")) {
